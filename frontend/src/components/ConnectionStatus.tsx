@@ -1,34 +1,20 @@
 import { Wifi, WifiOff } from 'lucide-react'
+import { useUIStore } from '../store/uiStore'
 
 /**
- * 연결 상태 컴포넌트
- * Socket.IO 연결 상태를 표시
- * 
- * TODO: 실제 연결 상태 연동 (Phase 5에서 구현)
+ * 연결 상태 표시 컴포넌트
  */
 export function ConnectionStatus() {
-  // 임시 연결 상태 (실제 구현 시 store에서 가져옴)
-  const isConnected = true
+  const { isConnected } = useUIStore()
+
+  if (isConnected) return null
 
   return (
-    <div
-      className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-        isConnected
-          ? 'bg-green-100 text-green-700'
-          : 'bg-red-100 text-red-700'
-      }`}
-    >
-      {isConnected ? (
-        <>
-          <Wifi className="w-4 h-4" />
-          <span>연결됨</span>
-        </>
-      ) : (
-        <>
-          <WifiOff className="w-4 h-4" />
-          <span>연결 끊김</span>
-        </>
-      )}
+    <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center gap-2">
+      <WifiOff size={16} className="text-red-500" />
+      <span className="text-sm text-red-600">
+        서버와 연결이 끊어졌습니다. 재연결 중...
+      </span>
     </div>
   )
 }

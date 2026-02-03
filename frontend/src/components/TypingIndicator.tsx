@@ -1,23 +1,23 @@
-import { Bot } from 'lucide-react'
-
 /**
  * 타이핑 인디케이터 컴포넌트
  * AI가 응답을 생성 중일 때 표시
  */
 export function TypingIndicator() {
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 message-enter">
       {/* 아바타 */}
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-        <Bot className="w-5 h-5 text-white" />
-      </div>
+      <img 
+        src="/kb-character-bibi.png" 
+        alt="비비" 
+        className="w-10 h-10 object-contain flex-shrink-0"
+      />
 
       {/* 타이핑 애니메이션 */}
-      <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+      <div className="bg-white border border-kb-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
         <div className="flex gap-1">
-          <div className="typing-dot" />
-          <div className="typing-dot" />
-          <div className="typing-dot" />
+          <span className="typing-dot w-2 h-2 bg-kb-gray-400 rounded-full" />
+          <span className="typing-dot w-2 h-2 bg-kb-gray-400 rounded-full" />
+          <span className="typing-dot w-2 h-2 bg-kb-gray-400 rounded-full" />
         </div>
       </div>
     </div>

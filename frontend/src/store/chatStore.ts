@@ -1,116 +1,92 @@
 import { create } from 'zustand'
 import type { Message, Source } from '../types/message'
-import type { ChatError } from '../types/chat'
 
-/**
- * 채팅 스토어 상태 인터페이스
- */
 interface ChatState {
-  /** 현재 세션 ID */
-  currentSessionId: string | null
-  /** 메시지 목록 */
   messages: Message[]
-  /** 로딩 상태 (AI 응답 대기 중) */
-  isLoading: boolean
-  /** 스트리밍 중인 메시지 내용 */
-  streamingContent: string | null
-  /** 에러 정보 */
-  error: ChatError | null
-}
-
-/**
- * 채팅 스토어 액션 인터페이스
- */
-interface ChatActions {
-  /** 세션 ID 설정 */
-  setSessionId: (sessionId: string) => void
-  /** 메시지 추가 */
-  addMessage: (message: Message) => void
-  /** 스트리밍 시작 */
-  startStreaming: () => void
-  /** 스트리밍 내용 추가 */
-  appendStreamingContent: (content: string) => void
-  /** 스트리밍 완료 */
-  completeStreaming: (messageId: string, sources?: Source[]) => void
-  /** 로딩 상태 설정 */
-  setLoading: (isLoading: boolean) => void
-  /** 에러 설정 */
-  setError: (error: ChatError | null) => void
-  /** 대화 초기화 */
-  clearMessages: () => void
-  /** 새 대화 시작 */
-  startNewConversation: () => void
-}
-
-/**
- * 고유 ID 생성 함수
- */
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-}
-
-/**
- * 채팅 상태 관리 스토어 (Zustand)
- * 
- * TODO: 실제 Socket.IO 연동 시 액션 구현 완료 (Phase 5)
- */
-export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
-  // 초기 상태
-  currentSessionId: null,
-  messages: [],
-  isLoading: false,
-  streamingContent: null,
-  error: null,
+  isTyping: boolean
+  sessionId: string
 
   // 액션
-  setSessionId: (sessionId) => set({ currentSessionId: sessionId }),
+  sendMessage: (content: string) => void
+  addMessage: (message: Message) => void
+  updateLastMessage: (content: string) => void
+  setTyping: (isTyping: boolean) => void
+  clearMessages: () => void
+}
 
-  addMessage: (message) =>
-    set((state) => ({
-      messages: [...state.messages, message],
-    })),
+// 세션 ID 생성
+const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
 
-  startStreaming: () =>
-    set({
-      isLoading: true,
-      streamingContent: '',
-    }),
+// 메시지 ID 생성
+const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
 
-  appendStreamingContent: (content) =>
-    set((state) => ({
-      streamingContent: (state.streamingContent || '') + content,
-    })),
+export const useChatStore = create<ChatState>((set, get) => ({
+  messages: [],
+  isTyping: false,
+  sessionId: generateSessionId(),
 
-  completeStreaming: (messageId, sources) => {
-    const { streamingContent, currentSessionId } = get()
-    if (streamingContent !== null && currentSessionId) {
-      const message: Message = {
-        id: messageId,
-        sessionId: currentSessionId,
-        role: 'assistant',
-        content: streamingContent,
-        timestamp: new Date().toISOString(),
-        sources,
-      }
-      set((state) => ({
-        messages: [...state.messages, message],
-        streamingContent: null,
-        isLoading: false,
-      }))
+  sendMessage: (content: string) => {
+    const userMessage: Message = {
+      id: generateMessageId(),
+      sessionId: get().sessionId,
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString(),
     }
+
+    set((state) => ({
+      messages: [...state.messages, userMessage],
+      isTyping: true,
+    }))
+
+    // TODO: Socket.IO로 메시지 전송
+    // 임시로 더미 응답 추가 (테스트용)
+    setTimeout(() => {
+      const aiMessage: Message = {
+        id: generateMessageId(),
+        sessionId: get().sessionId,
+        role: 'assistant',
+        content: '안녕하세요! KB AI 문서 도우미입니다. 현재 백엔드 서버가 연결되지 않아 테스트 응답을 보여드리고 있습니다. 실제 서비스에서는 사내 문서를 기반으로 정확한 답변을 드릴 예정입니다.',
+        timestamp: new Date().toISOString(),
+        sources: [
+          { document: 'user_manual.pdf', chunkId: 'chunk_001', similarity: 0.92, content: '' }
+        ]
+      }
+
+      set((state) => ({
+        messages: [...state.messages, aiMessage],
+        isTyping: false,
+      }))
+    }, 1500)
   },
 
-  setLoading: (isLoading) => set({ isLoading }),
+  addMessage: (message: Message) => {
+    set((state) => ({
+      messages: [...state.messages, message],
+    }))
+  },
 
-  setError: (error) => set({ error }),
+  updateLastMessage: (content: string) => {
+    set((state) => {
+      const messages = [...state.messages]
+      if (messages.length > 0) {
+        messages[messages.length - 1] = {
+          ...messages[messages.length - 1],
+          content,
+        }
+      }
+      return { messages }
+    })
+  },
 
-  clearMessages: () => set({ messages: [] }),
+  setTyping: (isTyping: boolean) => {
+    set({ isTyping })
+  },
 
-  startNewConversation: () =>
+  clearMessages: () => {
     set({
-      currentSessionId: generateId(),
       messages: [],
-      streamingContent: null,
-      error: null,
-    }),
+      sessionId: generateSessionId(),
+    })
+  },
 }))

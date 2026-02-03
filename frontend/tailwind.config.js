@@ -7,28 +7,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 커스텀 색상 정의
-        primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-        },
-      },
-      animation: {
-        'typing': 'typing 1s steps(3) infinite',
-      },
-      keyframes: {
-        typing: {
-          '0%, 100%': { opacity: '0.2' },
-          '50%': { opacity: '1' },
-        },
+        // KB 브랜드 컬러
+        kb: {
+          yellow: '#FFBC00',
+          'yellow-light': '#FFF4D6',
+          'yellow-dark': '#E5A800',
+          black: '#1A1A1A',
+          gray: {
+            50: '#F9FAFB',
+            100: '#F3F4F6',
+            200: '#E5E7EB',
+            300: '#D1D5DB',
+            400: '#9CA3AF',
+            500: '#6B7280',
+            600: '#4B5563',
+            700: '#374151',
+            800: '#1F2937',
+            900: '#111827',
+          }
+        }
       },
     },
   },
