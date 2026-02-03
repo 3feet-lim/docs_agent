@@ -2,7 +2,7 @@
 RAG 챗봇 시스템 - FastAPI 메인 애플리케이션
 
 이 모듈은 FastAPI 애플리케이션의 진입점입니다.
-CORS 설정, 라우터 등록, 로깅 설정 등을 담당합니다.
+CORS 설정, 라우터 등록, Socket.IO 통합, 로깅 설정 등을 담당합니다.
 """
 
 from contextlib import asynccontextmanager
@@ -12,9 +12,11 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import socketio
 
 from .config import get_settings
 from .utils.logger import setup_logging, get_logger
+from .api.websocket import sio, get_socket_app
 
 
 # 로깅 설정
@@ -136,6 +138,14 @@ async def root() -> dict:
 
 
 # 추후 라우터 등록 예정
-# from .api import chat, documents, websocket
+# from .api import chat, documents
 # app.include_router(chat.router, prefix="/api", tags=["Chat"])
 # app.include_router(documents.router, prefix="/api", tags=["Documents"])
+
+
+# Socket.IO ASGI 앱 생성 (FastAPI와 Socket.IO 통합)
+# Socket.IO는 /socket.io 경로에서 처리됨
+socket_app = socketio.ASGIApp(sio, app)
+
+logger.info("Socket.IO 서버 초기화 완료")
+

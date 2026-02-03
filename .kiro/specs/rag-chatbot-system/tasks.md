@@ -9,7 +9,7 @@
   - `.gitignore` 파일 생성
   - `README.md` 파일 생성
 
-- [ ] 1.2 Backend 디렉토리 구조 생성
+- [x] 1.2 Backend 디렉토리 구조 생성
   - `backend/src/` 하위 디렉토리 생성 (`api/`, `rag/`, `utils/`)
   - `backend/tests/` 디렉토리 생성
   - `backend/requirements.txt` 생성
@@ -37,13 +37,13 @@
   - `conversation_store.py` 복사
   - `mcp_manager.py` 복사
 
-- [ ] 2.2 FastAPI 앱 초기화
+- [x] 2.2 FastAPI 앱 초기화
   - `main.py` 작성 (FastAPI 앱 생성)
   - CORS 설정
   - Health check 엔드포인트 추가
   - 로깅 설정
 
-- [ ] 2.3 Socket.IO 서버 설정
+- [x] 2.3 Socket.IO 서버 설정
   - Socket.IO 서버 초기화
   - 연결/연결 해제 이벤트 핸들러
   - 기본 메시지 이벤트 핸들러
@@ -53,14 +53,14 @@
 ## Phase 3: RAG 파이프라인 구현
 
 ### 3. 문서 로딩 및 처리
-- [ ] 3.1 문서 로더 구현 (`rag/document_loader.py`)
+- [x] 3.1 문서 로더 구현 (`rag/document_loader.py`)
   - PDF 파서 구현
   - DOCX 파서 구현
   - Markdown 파서 구현
   - TXT 파서 구현
   - 디렉토리 스캔 기능
 
-- [ ] 3.2 문서 청킹 구현
+- [x] 3.2 문서 청킹 구현
   - RecursiveCharacterTextSplitter 설정
   - 청크 크기 및 오버랩 설정
   - 메타데이터 첨부 로직
@@ -68,13 +68,13 @@
   - **Property Test**: 청크 크기 제약 (Property 1.2)
 
 ### 4. 임베딩 및 벡터 저장
-- [ ] 4.1 임베딩 생성 (`rag/embeddings.py`)
+- [x] 4.1 임베딩 생성 (`rag/embeddings.py`)
   - AWS Bedrock Embeddings 클라이언트 설정
   - 텍스트 → 벡터 변환 함수
   - 배치 처리 지원
   - 에러 처리 및 재시도 로직
 
-- [ ] 4.2 S3 벡터 저장소 구현 (`rag/s3_vector_store.py`)
+- [x] 4.2 S3 벡터 저장소 구현 (`rag/s3_vector_store.py`)
   - S3 클라이언트 초기화
   - 벡터 저장 함수 (JSON 형식)
   - 벡터 로드 함수
@@ -82,7 +82,7 @@
   - 메타데이터 저장/조회
 
 ### 5. 문서 검색
-- [ ] 5.1 검색 엔진 구현 (`rag/retriever.py`)
+- [x] 5.1 검색 엔진 구현 (`rag/retriever.py`)
   - 코사인 유사도 계산 함수
   - Top-K 검색 함수
   - 최소 유사도 필터링
@@ -91,14 +91,14 @@
   - **Property Test**: Top-K 제약 (Property 2.3)
 
 ### 6. RAG 체인 구성
-- [ ] 6.1 RAG 체인 구현 (`rag/chain.py`)
+- [x] 6.1 RAG 체인 구현 (`rag/chain.py`)
   - 프롬프트 템플릿 작성
   - 컨텍스트 구성 함수
   - LangChain RAG 체인 설정
   - 스트리밍 응답 처리
   - **Property Test**: 컨텍스트 포함 (Property 4.2)
 
-- [ ] 6.2 Bedrock 클라이언트 개선
+- [x] 6.2 Bedrock 클라이언트 개선
   - Claude Sonnet 4.5 모델 설정
   - 스트리밍 API 호출
   - 토큰 사용량 추적
