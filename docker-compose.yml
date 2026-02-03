@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Backend 서비스 (FastAPI + Python)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # 소스 코드 볼륨 마운트 (Hot Reload 지원)
+      - ./backend/src:/app/src
+      # 문서 디렉토리 마운트
+      - ./documents:/app/documents
+    env_file:
+      - .env
+    environment:
+      # Python 출력 버퍼링 비활성화 (로그 실시간 확인)
+      - PYTHONUNBUFFERED=1
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend 서비스 (React + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      # 소스 코드 볼륨 마운트 (Vite HMR 지원)
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    environment:
+      # Backend URL 설정 (컨테이너 간 통신)
+      - VITE_BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+# 네트워크 설정
+networks:
+  app-network:
+    driver: bridge
+
+# 볼륨 설정
+volumes:
+  documents:
+    driver: local

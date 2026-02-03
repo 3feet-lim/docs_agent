@@ -23,4 +23,5 @@ markdown==3.7.0
 
 # Utils
 pydantic==2.9.0
+pydantic-settings==2.5.0
 python-dotenv==1.0.0

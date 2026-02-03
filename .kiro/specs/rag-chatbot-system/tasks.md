@@ -21,7 +21,7 @@
   - TailwindCSS 설정
   - `frontend/Dockerfile` 생성
 
-- [ ] 1.4 Docker Compose 설정
+- [x] 1.4 Docker Compose 설정
   - `docker-compose.yml` 작성
   - 네트워크 및 볼륨 설정
   - 환경변수 주입 설정
@@ -31,7 +31,7 @@
 ## Phase 2: Backend 기본 구조
 
 ### 2. 기존 코드 마이그레이션
-- [ ] 2.1 ai-agent-demo 코드 복사 및 검토
+- [x] 2.1 ai-agent-demo 코드 복사 및 검토
   - `bedrock_client.py` 복사 및 Claude Sonnet 4.5 지원 확인
   - `config.py` 복사 및 환경변수 추가
   - `conversation_store.py` 복사
