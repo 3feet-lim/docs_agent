@@ -1,3 +1,45 @@
+# ===================================
+# RAG 챗봇 시스템 프로젝트 설정
+# ===================================
+
+# 환경변수 파일 (민감 정보 보호)
+.env
+.env.local
+.env.*.local
+
+# 문서 디렉토리 (대용량 파일)
+documents/*.pdf
+documents/*.docx
+documents/*.doc
+
+# 벡터 캐시
+vectors/
+*.npy
+*.pkl
+
+# ===================================
+# Node.js / Frontend
+# ===================================
+node_modules/
+dist/
+.vite/
+*.local
+
+# 로그
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 에디터 디렉토리
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ===================================
+# Python / Backend
+# ===================================
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
