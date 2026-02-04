@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { ChatContainer } from './components/ChatContainer'
+import { Sidebar } from './components/Sidebar'
 import { useSocket } from './hooks/useSocket'
 import { useChatStore } from './store/chatStore'
 import {
@@ -19,7 +20,7 @@ function App() {
   // Socket.IO 연결 관리
   useSocket()
   
-  const { appendToStreaming, completeStreaming, setTyping } = useChatStore()
+  const { appendToStreaming, completeStreaming, setTyping, isSidebarOpen } = useChatStore()
 
   // Socket.IO 이벤트 리스너 등록
   useEffect(() => {
@@ -70,9 +71,15 @@ function App() {
         </h1>
       </header>
 
-      {/* 채팅 영역 */}
-      <main className="flex-1 overflow-hidden">
-        <ChatContainer />
+      {/* 메인 영역 (사이드바 + 채팅) */}
+      <main className="flex-1 flex overflow-hidden">
+        {/* 사이드바 */}
+        <Sidebar />
+        
+        {/* 채팅 영역 */}
+        <div className={`flex-1 overflow-hidden transition-all ${isSidebarOpen ? '' : 'ml-0'}`}>
+          <ChatContainer />
+        </div>
       </main>
     </div>
   )

@@ -230,10 +230,24 @@ async def get_chat_history_endpoint(session_id: str) -> dict:
         dict: 대화 히스토리
     """
     messages = get_session_messages(session_id)
+    # Frontend 형식에 맞게 변환
+    formatted_messages = []
+    for m in messages:
+        formatted = {
+            "id": m.get("message_id", ""),
+            "session_id": session_id,
+            "role": m["role"],
+            "content": m["content"],
+            "timestamp": m["timestamp"],
+        }
+        if m.get("sources"):
+            formatted["sources"] = m["sources"]
+        formatted_messages.append(formatted)
+    
     return {
         "session_id": session_id,
-        "messages": messages,
-        "count": len(messages)
+        "messages": formatted_messages,
+        "count": len(formatted_messages)
     }
 
 

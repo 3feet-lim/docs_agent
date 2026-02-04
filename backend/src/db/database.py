@@ -182,7 +182,10 @@ def get_all_sessions() -> List[dict]:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT s.session_id, s.created_at, s.updated_at,
-                   COUNT(m.id) as message_count
+                   COUNT(m.id) as message_count,
+                   (SELECT content FROM messages 
+                    WHERE session_id = s.session_id AND role = 'user' 
+                    ORDER BY id ASC LIMIT 1) as first_message
             FROM sessions s
             LEFT JOIN messages m ON s.session_id = m.session_id
             GROUP BY s.session_id

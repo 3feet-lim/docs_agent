@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import { sendChatMessage } from '../api/socket'
+import { getSessions, getSessionHistory, deleteSession } from '../api/http'
 import type { Message, Source } from '../types/message'
+
+interface Session {
+  sessionId: string
+  messageCount: number
+  createdAt: string
+  updatedAt: string
+  firstMessage?: string
+}
 
 interface ChatState {
   messages: Message[]
@@ -8,6 +17,9 @@ interface ChatState {
   sessionId: string
   streamingMessageId: string | null
   streamingContent: string
+  sessions: Session[]
+  isLoadingSessions: boolean
+  isSidebarOpen: boolean
 
   // 액션
   sendMessage: (content: string) => void
@@ -16,6 +28,11 @@ interface ChatState {
   completeStreaming: (messageId: string, sources?: Source[]) => void
   setTyping: (isTyping: boolean) => void
   clearMessages: () => void
+  loadSessions: () => Promise<void>
+  loadSession: (sessionId: string) => Promise<void>
+  deleteSessionById: (sessionId: string) => Promise<void>
+  startNewChat: () => void
+  toggleSidebar: () => void
 }
 
 // 세션 ID 생성
@@ -30,6 +47,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sessionId: generateSessionId(),
   streamingMessageId: null,
   streamingContent: '',
+  sessions: [],
+  isLoadingSessions: false,
+  isSidebarOpen: true,
 
   sendMessage: (content: string) => {
     const state = get()
@@ -116,6 +136,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         streamingContent: '',
       }
     })
+    
+    // 응답 완료 후 세션 목록 새로고침
+    get().loadSessions()
   },
 
   setTyping: (isTyping: boolean) => {
@@ -129,5 +152,85 @@ export const useChatStore = create<ChatState>((set, get) => ({
       streamingMessageId: null,
       streamingContent: '',
     })
+  },
+
+  loadSessions: async () => {
+    set({ isLoadingSessions: true })
+    try {
+      const response = await getSessions()
+      if (response.data) {
+        const sessions: Session[] = response.data.sessions.map(s => ({
+          sessionId: s.session_id,
+          messageCount: s.message_count,
+          createdAt: s.created_at,
+          updatedAt: s.updated_at,
+          firstMessage: s.first_message,
+        }))
+        set({ sessions })
+      }
+    } catch (error) {
+      console.error('세션 목록 로드 실패:', error)
+    } finally {
+      set({ isLoadingSessions: false })
+    }
+  },
+
+  loadSession: async (sessionId: string) => {
+    try {
+      const response = await getSessionHistory(sessionId)
+      if (response.data) {
+        const messages: Message[] = response.data.messages.map(m => ({
+          id: m.id,
+          sessionId: m.session_id,
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+          timestamp: m.timestamp,
+          sources: m.sources?.map(s => ({
+            document: s.document,
+            sourceUri: s.source_uri,
+            score: s.score,
+            content: '',
+            chunkId: '',
+            similarity: s.score,
+          })),
+        }))
+        set({ 
+          messages, 
+          sessionId,
+          streamingMessageId: null,
+          streamingContent: '',
+        })
+      }
+    } catch (error) {
+      console.error('세션 로드 실패:', error)
+    }
+  },
+
+  deleteSessionById: async (sessionId: string) => {
+    try {
+      await deleteSession(sessionId)
+      // 현재 세션이 삭제된 경우 새 채팅 시작
+      if (get().sessionId === sessionId) {
+        get().startNewChat()
+      }
+      // 세션 목록 새로고침
+      get().loadSessions()
+    } catch (error) {
+      console.error('세션 삭제 실패:', error)
+    }
+  },
+
+  startNewChat: () => {
+    set({
+      messages: [],
+      sessionId: generateSessionId(),
+      streamingMessageId: null,
+      streamingContent: '',
+      isTyping: false,
+    })
+  },
+
+  toggleSidebar: () => {
+    set((state) => ({ isSidebarOpen: !state.isSidebarOpen }))
   },
 }))

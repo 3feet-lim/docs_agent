@@ -1,12 +1,10 @@
 /**
  * HTTP 클라이언트
  * REST API 호출을 위한 유틸리티
- * 
- * TODO: 실제 API 연동 (Phase 5)
  */
 
-// 백엔드 URL (환경변수 또는 기본값)
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+// 백엔드 URL (Vite proxy 사용)
+const API_BASE = '/api'
 
 /**
  * API 응답 타입
@@ -24,7 +22,7 @@ interface ApiResponse<T> {
  */
 export async function healthCheck(): Promise<ApiResponse<{ status: string; timestamp: string }>> {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/health`)
+    const response = await fetch(`${API_BASE}/health`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
@@ -41,20 +39,22 @@ export async function healthCheck(): Promise<ApiResponse<{ status: string; times
 }
 
 /**
- * 문서 목록 조회 API (선택)
+ * 세션 목록 조회 API
  */
-export async function getDocuments(): Promise<
+export async function getSessions(): Promise<
   ApiResponse<{
-    documents: Array<{
-      id: string
-      filename: string
-      uploadedAt: string
-      chunks: number
+    sessions: Array<{
+      session_id: string
+      message_count: number
+      created_at: string
+      updated_at: string
+      first_message?: string
     }>
+    count: number
   }>
 > {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/documents`)
+    const response = await fetch(`${API_BASE}/sessions`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
@@ -71,24 +71,50 @@ export async function getDocuments(): Promise<
 }
 
 /**
- * 문서 업로드 API (선택)
+ * 세션 히스토리 조회 API
  */
-export async function uploadDocument(
-  file: File
-): Promise<ApiResponse<{ id: string; filename: string; status: string }>> {
+export async function getSessionHistory(sessionId: string): Promise<
+  ApiResponse<{
+    session_id: string
+    messages: Array<{
+      id: string
+      session_id: string
+      role: string
+      content: string
+      timestamp: string
+      sources?: any[]
+    }>
+    count: number
+  }>
+> {
   try {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const response = await fetch(`${BACKEND_URL}/api/documents/upload`, {
-      method: 'POST',
-      body: formData,
-    })
-
+    const response = await fetch(`${API_BASE}/chat/${sessionId}/history`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
+    const data = await response.json()
+    return { data }
+  } catch (error) {
+    return {
+      error: {
+        code: 'NETWORK_ERROR',
+        message: error instanceof Error ? error.message : '알 수 없는 오류',
+      },
+    }
+  }
+}
 
+/**
+ * 세션 삭제 API
+ */
+export async function deleteSession(sessionId: string): Promise<ApiResponse<{ message: string }>> {
+  try {
+    const response = await fetch(`${API_BASE}/chat/${sessionId}`, {
+      method: 'DELETE',
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
     const data = await response.json()
     return { data }
   } catch (error) {
