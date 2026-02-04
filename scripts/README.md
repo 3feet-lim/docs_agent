@@ -61,7 +61,7 @@ docker compose down
 
 ### `port is already allocated`
 ```bash
-docker-compose down
+docker compose down
 # 또는 포트 변경: .env에서 BACKEND_PORT, FRONTEND_PORT 수정
 ```
 
