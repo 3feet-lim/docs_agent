@@ -196,40 +196,42 @@ async def chat_message(sid: str, data: dict):
         
         if kb_client:
             try:
-                # Knowledge Base 스트리밍 응답 생성
-                full_response = ""
-                
-                async for token, final_response in kb_client.retrieve_and_generate_stream(
+                # Knowledge Base 응답 생성 (먼저 전체 응답 확인)
+                kb_response = kb_client.retrieve_and_generate(
                     query=request.message,
                     conversation_history=history
-                ):
-                    if token:
-                        full_response += token
-                        chunk = ChatResponseChunk(
-                            session_id=request.session_id,
-                            content=token,
-                            is_final=False
-                        )
-                        await sio.emit('chat_response_chunk', chunk.model_dump(), to=sid)
-                        await asyncio.sleep(0.02)  # 자연스러운 타이핑 효과
-                    
-                    if final_response:
-                        # 출처 정보 추출
-                        for chunk_info in final_response.retrieved_chunks:
-                            uri = chunk_info.source_uri
-                            filename = uri.split('/')[-1] if uri else 'unknown'
-                            
-                            sources.append({
-                                'document': filename,
-                                'source_uri': uri,
-                                'score': round(chunk_info.score, 3)
-                            })
+                )
+                
+                full_response = kb_response.answer
                 
                 # Knowledge Base가 답변을 거부한 경우 일반 Bedrock으로 fallback
                 if full_response.strip().lower().startswith("sorry, i am unable"):
                     logger.info("Knowledge Base 답변 거부, Bedrock 직접 호출로 fallback")
                     await _send_bedrock_response(sid, request, ai_message_id, timestamp, history)
                     return
+                
+                # 정상 응답이면 스트리밍으로 전송
+                words = full_response.split()
+                for i, word in enumerate(words):
+                    is_last = (i == len(words) - 1)
+                    chunk = ChatResponseChunk(
+                        session_id=request.session_id,
+                        content=word + (" " if not is_last else ""),
+                        is_final=is_last
+                    )
+                    await sio.emit('chat_response_chunk', chunk.model_dump(), to=sid)
+                    await asyncio.sleep(0.02)  # 자연스러운 타이핑 효과
+                
+                # 출처 정보 추출
+                for chunk_info in kb_response.retrieved_chunks:
+                    uri = chunk_info.source_uri
+                    filename = uri.split('/')[-1] if uri else 'unknown'
+                    
+                    sources.append({
+                        'document': filename,
+                        'source_uri': uri,
+                        'score': round(chunk_info.score, 3)
+                    })
                 
                 # AI 응답 DB에 저장
                 save_message(
@@ -332,8 +334,8 @@ async def _send_bedrock_response(
 
 
 async def _send_echo_response(sid: str, request: ChatMessageRequest, message_id: str, timestamp: str):
-    """에코 응답을 전송합니다 (RAG 미사용 시)."""
-    response_content = f"[에코 모드] 메시지를 받았습니다: {request.message}"
+    """에코 응답을 전송합니다 (Bedrock 연결 불가 시)."""
+    response_content = f"현재 AI 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요."
     
     # 스트리밍 시뮬레이션
     tokens = response_content.split()
