@@ -37,9 +37,19 @@ class Settings(BaseSettings):
         default="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
         description="Bedrock LLM 모델 ID (Claude Sonnet 4.5)"
     )
+    bedrock_model_arn: str = Field(
+        default="",
+        description="Bedrock 모델 ARN (Knowledge Base용)"
+    )
     bedrock_embeddings_model_id: str = Field(
         default="amazon.titan-embed-text-v2:0",
         description="Bedrock 임베딩 모델 ID"
+    )
+    
+    # Knowledge Base 설정
+    knowledge_base_id: str = Field(
+        default="",
+        description="Bedrock Knowledge Base ID"
     )
     
     # S3 벡터 저장소 설정
@@ -108,6 +118,12 @@ class Settings(BaseSettings):
     log_format: str = Field(
         default="json",
         description="로그 형식 (json, text)"
+    )
+    
+    # 데이터베이스 설정
+    db_path: str = Field(
+        default="data/chat_history.db",
+        description="SQLite 데이터베이스 파일 경로"
     )
     
     # MCP 설정 (선택적)

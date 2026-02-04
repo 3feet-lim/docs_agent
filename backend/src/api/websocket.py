@@ -15,7 +15,8 @@ from pydantic import BaseModel, Field
 
 from ..config import get_settings
 from ..utils.logger import get_logger
-from ..rag import RAGChain, Message as RAGMessage, create_rag_chain
+from ..rag import BedrockKnowledgeBase, create_knowledge_base_client
+from ..db import save_message, get_session_history
 
 
 logger = get_logger(__name__)
@@ -90,23 +91,20 @@ class ChatError(BaseModel):
 # 연결된 클라이언트 세션 관리
 connected_sessions: dict[str, str] = {}  # sid -> session_id
 
-# 세션별 대화 히스토리
-conversation_histories: dict[str, list[RAGMessage]] = {}
-
-# RAG 체인 인스턴스 (지연 초기화)
-_rag_chain: Optional[RAGChain] = None
+# Knowledge Base 클라이언트 (지연 초기화)
+_kb_client: Optional[BedrockKnowledgeBase] = None
 
 
-def get_rag_chain() -> RAGChain:
-    """RAG 체인 인스턴스를 반환합니다."""
-    global _rag_chain
-    if _rag_chain is None:
+def get_kb_client() -> Optional[BedrockKnowledgeBase]:
+    """Knowledge Base 클라이언트를 반환합니다."""
+    global _kb_client
+    if _kb_client is None:
         try:
-            _rag_chain = create_rag_chain()
+            _kb_client = create_knowledge_base_client()
         except Exception as e:
-            logger.warning(f"RAG 체인 초기화 실패 (에코 모드로 동작): {e}")
-            _rag_chain = None
-    return _rag_chain
+            logger.warning(f"Knowledge Base 초기화 실패 (에코 모드로 동작): {e}")
+            _kb_client = None
+    return _kb_client
 
 
 @sio.event
@@ -159,7 +157,7 @@ async def chat_message(sid: str, data: dict):
     채팅 메시지 이벤트 핸들러
     
     사용자로부터 채팅 메시지를 받아 처리합니다.
-    RAG 파이프라인을 통해 응답을 생성하고 스트리밍합니다.
+    Bedrock Knowledge Base를 통해 응답을 생성하고 스트리밍합니다.
     
     Args:
         sid: Socket.IO 세션 ID
@@ -173,29 +171,35 @@ async def chat_message(sid: str, data: dict):
         # 세션 ID 업데이트
         connected_sessions[sid] = request.session_id
         
-        # 대화 히스토리 가져오기
-        if request.session_id not in conversation_histories:
-            conversation_histories[request.session_id] = []
+        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        user_message_id = str(uuid.uuid4())
+        ai_message_id = str(uuid.uuid4())
         
-        history = conversation_histories[request.session_id]
+        # DB에서 대화 히스토리 가져오기
+        history = get_session_history(request.session_id)
         
-        # 사용자 메시지를 히스토리에 추가
-        history.append(RAGMessage(role="user", content=request.message))
+        # 사용자 메시지 DB에 저장
+        save_message(
+            message_id=user_message_id,
+            session_id=request.session_id,
+            role="user",
+            content=request.message,
+            timestamp=timestamp
+        )
         
-        message_id = str(uuid.uuid4())
         sources = []
         
-        # RAG 체인 사용 시도
-        rag_chain = get_rag_chain()
+        # Knowledge Base 클라이언트 사용 시도
+        kb_client = get_kb_client()
         
-        if rag_chain:
+        if kb_client:
             try:
-                # RAG 스트리밍 응답 생성
+                # Knowledge Base 스트리밍 응답 생성
                 full_response = ""
                 
-                async for token, final_response in rag_chain.generate_stream(
+                async for token, final_response in kb_client.retrieve_and_generate_stream(
                     query=request.message,
-                    conversation_history=history[:-1]  # 현재 메시지 제외
+                    conversation_history=history
                 ):
                     if token:
                         full_response += token
@@ -205,39 +209,48 @@ async def chat_message(sid: str, data: dict):
                             is_final=False
                         )
                         await sio.emit('chat_response_chunk', chunk.model_dump(), to=sid)
+                        await asyncio.sleep(0.02)  # 자연스러운 타이핑 효과
                     
                     if final_response:
-                        sources = [
-                            {
-                                'document': s.metadata.get('filename', 'unknown'),
-                                'chunk_id': s.chunk_id,
-                                'similarity': round(s.similarity, 3)
-                            }
-                            for s in final_response.sources
-                        ]
+                        # 출처 정보 추출
+                        for chunk_info in final_response.retrieved_chunks:
+                            uri = chunk_info.source_uri
+                            filename = uri.split('/')[-1] if uri else 'unknown'
+                            
+                            sources.append({
+                                'document': filename,
+                                'source_uri': uri,
+                                'score': round(chunk_info.score, 3)
+                            })
                 
-                # 어시스턴트 응답을 히스토리에 추가
-                history.append(RAGMessage(role="assistant", content=full_response))
+                # AI 응답 DB에 저장
+                save_message(
+                    message_id=ai_message_id,
+                    session_id=request.session_id,
+                    role="assistant",
+                    content=full_response,
+                    sources=sources if sources else None,
+                    timestamp=timestamp
+                )
                 
             except Exception as e:
-                logger.error(f"RAG 처리 오류, 에코 모드로 폴백: {e}")
-                # 에코 모드로 폴백
-                await _send_echo_response(sid, request, message_id)
+                logger.error(f"Knowledge Base 처리 오류, 에코 모드로 폴백: {e}")
+                await _send_echo_response(sid, request, ai_message_id, timestamp)
                 return
         else:
-            # RAG 체인이 없으면 에코 모드
-            await _send_echo_response(sid, request, message_id)
+            # Knowledge Base가 없으면 에코 모드
+            await _send_echo_response(sid, request, ai_message_id, timestamp)
             return
         
         # 응답 완료 이벤트
         complete = ChatResponseComplete(
             session_id=request.session_id,
-            message_id=message_id,
+            message_id=ai_message_id,
             sources=sources
         )
         await sio.emit('chat_response_complete', complete.model_dump(), to=sid)
         
-        logger.info(f"응답 완료: sid={sid}, message_id={message_id}")
+        logger.info(f"응답 완료: sid={sid}, message_id={ai_message_id}")
         
     except Exception as e:
         logger.error(f"메시지 처리 오류: sid={sid}, error={str(e)}")
@@ -251,7 +264,7 @@ async def chat_message(sid: str, data: dict):
         await sio.emit('chat_error', error.model_dump(), to=sid)
 
 
-async def _send_echo_response(sid: str, request: ChatMessageRequest, message_id: str):
+async def _send_echo_response(sid: str, request: ChatMessageRequest, message_id: str, timestamp: str):
     """에코 응답을 전송합니다 (RAG 미사용 시)."""
     response_content = f"[에코 모드] 메시지를 받았습니다: {request.message}"
     
@@ -266,6 +279,15 @@ async def _send_echo_response(sid: str, request: ChatMessageRequest, message_id:
         )
         await sio.emit('chat_response_chunk', chunk.model_dump(), to=sid)
         await asyncio.sleep(0.05)  # 타이핑 효과
+    
+    # 에코 응답도 DB에 저장
+    save_message(
+        message_id=message_id,
+        session_id=request.session_id,
+        role="assistant",
+        content=response_content,
+        timestamp=timestamp
+    )
     
     # 응답 완료
     complete = ChatResponseComplete(

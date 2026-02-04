@@ -17,6 +17,7 @@ import socketio
 from .config import get_settings
 from .utils.logger import setup_logging, get_logger
 from .api.websocket import sio, get_socket_app
+from .api.chat import router as chat_router
 
 
 # 로깅 설정
@@ -137,11 +138,8 @@ async def root() -> dict:
     }
 
 
-# 추후 라우터 등록 예정
-# from .api import chat, documents
-# app.include_router(chat.router, prefix="/api", tags=["Chat"])
-# app.include_router(documents.router, prefix="/api", tags=["Documents"])
-
+# 라우터 등록
+app.include_router(chat_router, prefix="/api", tags=["Chat"])
 
 # Socket.IO ASGI 앱 생성 (FastAPI와 Socket.IO 통합)
 # Socket.IO는 /socket.io 경로에서 처리됨

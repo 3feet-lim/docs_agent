@@ -13,6 +13,8 @@ services:
       - ./backend/src:/app/src
       # 문서 디렉토리 마운트
       - ./documents:/app/documents
+      # SQLite 데이터베이스 볼륨
+      - ./data:/app/data
     env_file:
       - .env
     environment:
@@ -56,4 +58,6 @@ networks:
 # 볼륨 설정
 volumes:
   documents:
+    driver: local
+  data:
     driver: local

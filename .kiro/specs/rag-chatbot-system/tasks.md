@@ -50,66 +50,25 @@
 
 ---
 
-## Phase 3: RAG 파이프라인 구현
+## Phase 3: RAG 파이프라인 구현 (Bedrock Knowledge Base 사용)
 
-### 3. 문서 로딩 및 처리
-- [x] 3.1 문서 로더 구현 (`rag/document_loader.py`)
-  - PDF 파서 구현
-  - DOCX 파서 구현
-  - Markdown 파서 구현
-  - TXT 파서 구현
-  - 디렉토리 스캔 기능
+### 3. Bedrock Knowledge Base 연동
+- [x] 3.1 Knowledge Base 클라이언트 구현 (`rag/knowledge_base.py`)
+  - `bedrock-agent-runtime` 클라이언트 설정
+  - `retrieve` API 호출 (문서 검색)
+  - `retrieve_and_generate` API 호출 (검색 + 응답 생성)
+  - 스트리밍 응답 시뮬레이션
+  - 출처 정보 추출
 
-- [x] 3.2 문서 청킹 구현
-  - RecursiveCharacterTextSplitter 설정
-  - 청크 크기 및 오버랩 설정
-  - 메타데이터 첨부 로직
-  - **Property Test**: 청킹 일관성 (Property 1.1)
-  - **Property Test**: 청크 크기 제약 (Property 1.2)
-
-### 4. 임베딩 및 벡터 저장
-- [x] 4.1 임베딩 생성 (`rag/embeddings.py`)
-  - AWS Bedrock Embeddings 클라이언트 설정
-  - 텍스트 → 벡터 변환 함수
-  - 배치 처리 지원
-  - 에러 처리 및 재시도 로직
-
-- [x] 4.2 S3 벡터 저장소 구현 (`rag/s3_vector_store.py`)
-  - S3 클라이언트 초기화
-  - 벡터 저장 함수 (JSON 형식)
-  - 벡터 로드 함수
-  - 인덱스 파일 관리
-  - 메타데이터 저장/조회
-
-### 5. 문서 검색
-- [x] 5.1 검색 엔진 구현 (`rag/retriever.py`)
-  - 코사인 유사도 계산 함수
-  - Top-K 검색 함수
-  - 최소 유사도 필터링
-  - **Property Test**: 검색 결과 정렬 (Property 2.1)
-  - **Property Test**: 최소 유사도 필터링 (Property 2.2)
-  - **Property Test**: Top-K 제약 (Property 2.3)
-
-### 6. RAG 체인 구성
-- [x] 6.1 RAG 체인 구현 (`rag/chain.py`)
-  - 프롬프트 템플릿 작성
-  - 컨텍스트 구성 함수
-  - LangChain RAG 체인 설정
-  - 스트리밍 응답 처리
-  - **Property Test**: 컨텍스트 포함 (Property 4.2)
-
-- [x] 6.2 Bedrock 클라이언트 개선
-  - Claude Sonnet 4.5 모델 설정
-  - 스트리밍 API 호출
-  - 토큰 사용량 추적
-  - 에러 처리
+> **참고**: Bedrock Knowledge Base가 문서 청킹, 임베딩, 벡터 저장, 검색을 모두 처리합니다.
+> S3에 문서를 업로드하면 Knowledge Base가 자동으로 인덱싱합니다.
 
 ---
 
 ## Phase 4: API 엔드포인트
 
 ### 7. REST API 구현
-- [ ] 7.1 채팅 API (`api/chat.py`)
+- [x] 7.1 채팅 API (`api/chat.py`)
   - `POST /api/chat` 엔드포인트
   - 요청 검증 (Pydantic 모델)
   - RAG 파이프라인 호출
@@ -123,7 +82,7 @@
   - 문서 업로드 처리
 
 ### 8. WebSocket 통신
-- [ ] 8.1 Socket.IO 이벤트 핸들러 (`api/websocket.py`)
+- [x] 8.1 Socket.IO 이벤트 핸들러 (`api/websocket.py`)
   - `chat_message` 이벤트 핸들러
   - `chat_response_chunk` 이벤트 발신
   - `chat_response_complete` 이벤트 발신
@@ -135,49 +94,49 @@
 ## Phase 5: Frontend 구현
 
 ### 9. 기본 UI 컴포넌트
-- [ ] 9.1 레이아웃 컴포넌트
+- [x] 9.1 레이아웃 컴포넌트
   - `App.tsx` 루트 컴포넌트
   - `ChatContainer.tsx` 채팅 컨테이너
   - TailwindCSS 스타일링
 
-- [ ] 9.2 메시지 컴포넌트
+- [x] 9.2 메시지 컴포넌트
   - `MessageList.tsx` 메시지 목록
   - `MessageItem.tsx` 개별 메시지
   - 사용자/AI 메시지 구분 스타일
   - 타임스탬프 표시
 
-- [ ] 9.3 입력 컴포넌트
+- [x] 9.3 입력 컴포넌트
   - `MessageInput.tsx` 입력창
   - 전송 버튼
   - Enter 키 전송
   - 입력 검증
 
-- [ ] 9.4 상태 표시 컴포넌트
+- [x] 9.4 상태 표시 컴포넌트
   - `TypingIndicator.tsx` 타이핑 인디케이터
   - `ConnectionStatus.tsx` 연결 상태
   - 로딩 스피너
 
 ### 10. 상태 관리
-- [ ] 10.1 Zustand 스토어 설정
+- [x] 10.1 Zustand 스토어 설정
   - `store/chatStore.ts` 채팅 상태
   - `store/uiStore.ts` UI 상태
   - 메시지 추가/업데이트 액션
   - 세션 관리 액션
 
 ### 11. API 통신
-- [ ] 11.1 Socket.IO 클라이언트 (`api/socket.ts`)
+- [x] 11.1 Socket.IO 클라이언트 (`api/socket.ts`)
   - Socket.IO 연결 설정
   - 이벤트 리스너 등록
   - 메시지 전송 함수
   - 재연결 로직
 
-- [ ] 11.2 React 훅 구현
+- [x] 11.2 React 훅 구현
   - `hooks/useSocket.ts` Socket.IO 훅
   - `hooks/useChat.ts` 채팅 로직 훅
   - `hooks/useMessages.ts` 메시지 관리 훅
 
 ### 12. 스트리밍 응답
-- [ ] 12.1 스트리밍 UI 구현
+- [x] 12.1 스트리밍 UI 구현
   - 토큰 단위 메시지 업데이트
   - 타이핑 효과 애니메이션
   - 스트리밍 완료 처리
@@ -187,17 +146,13 @@
 
 ## Phase 6: 통합 및 테스트
 
-### 13. 문서 인덱싱 스크립트
-- [ ] 13.1 인덱싱 CLI 도구
-  - 문서 디렉토리 스캔
-  - 문서 처리 및 임베딩
-  - S3 업로드
-  - 진행 상황 표시
+> **참고**: Bedrock Knowledge Base를 사용하므로 문서 인덱싱 스크립트(13.1)는 불필요합니다.
+> AWS 콘솔에서 Knowledge Base를 생성하고 S3 데이터 소스를 연결하면 자동으로 인덱싱됩니다.
 
 ### 14. 통합 테스트
 - [ ] 14.1 Backend 통합 테스트
   - API 엔드포인트 테스트
-  - RAG 파이프라인 E2E 테스트
+  - Knowledge Base 연동 테스트
   - Socket.IO 통신 테스트
 
 - [ ] 14.2 Frontend 통합 테스트
@@ -205,13 +160,12 @@
   - 사용자 인터랙션 테스트
   - Socket.IO 통신 테스트
 
-### 15. Property-Based Testing
-- [ ] 15.1 Backend PBT 설정
+### 15. Property-Based Testing (선택)
+- [ ] 15.1* Backend PBT 설정
   - Hypothesis 설정
   - 테스트 전략 정의
-  - 모든 Property Tests 실행 및 검증
 
-- [ ] 15.2 Frontend PBT 설정 (선택)
+- [ ] 15.2* Frontend PBT 설정
   - fast-check 설정
   - 메시지 관련 Property Tests
 
