@@ -41,9 +41,11 @@ class ChatMessageRequest(BaseModel):
         message: 사용자 메시지 내용
         timestamp: 메시지 전송 시간 (선택)
     """
-    session_id: str = Field(..., description="세션 식별자")
+    session_id: str = Field(..., alias="sessionId", description="세션 식별자")
     message: str = Field(..., min_length=1, max_length=10000, description="메시지 내용")
     timestamp: Optional[str] = Field(default=None, description="메시지 전송 시간")
+    
+    model_config = {"populate_by_name": True}
 
 
 class ChatResponseChunk(BaseModel):
