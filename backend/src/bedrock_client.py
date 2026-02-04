@@ -185,15 +185,12 @@ class BedrockClient:
         if system_prompt:
             body["system"] = system_prompt
         
+        # Claude 모델은 temperature와 top_p를 동시에 사용할 수 없음
+        # temperature만 사용
         if temperature is not None:
             body["temperature"] = temperature
         else:
             body["temperature"] = self.temperature
-        
-        if top_p is not None:
-            body["top_p"] = top_p
-        else:
-            body["top_p"] = self.top_p
         
         return body
     
