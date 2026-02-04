@@ -2,8 +2,6 @@
 # RAG 챗봇 시스템 Docker 통합 테스트
 # 사용법: ./scripts/test-docker.sh
 
-set -e
-
 echo "=========================================="
 echo "RAG 챗봇 시스템 Docker 테스트"
 echo "=========================================="
@@ -21,16 +19,20 @@ run_test() {
     local command=$2
     
     echo -n "테스트: $name ... "
-    if eval "$command" > /dev/null 2>&1; then
+    
+    # 명령어 실행 및 출력 캡처
+    OUTPUT=$(eval "$command" 2>&1)
+    EXIT_CODE=$?
+    
+    if [ $EXIT_CODE -eq 0 ]; then
         echo -e "${GREEN}PASSED${NC}"
         ((PASSED++))
-        return 0
     else
         echo -e "${RED}FAILED${NC}"
         ((FAILED++))
+        echo "  에러 코드: $EXIT_CODE"
         echo "  상세:"
-        eval "$command" 2>&1 | head -20
-        return 1
+        echo "$OUTPUT" | head -30 | sed 's/^/    /'
     fi
 }
 
@@ -72,13 +74,15 @@ run_test "Frontend 이미지 빌드" "docker compose build frontend"
 echo ""
 echo "4. 컨테이너 시작"
 echo "----------------------------------------"
-docker compose up -d
+echo "컨테이너 시작 중..."
+docker compose up -d 2>&1 || true
 
 echo "서버 시작 대기 중 (15초)..."
 sleep 15
 
 # 컨테이너 상태 확인
 echo ""
+echo "컨테이너 상태:"
 docker compose ps
 
 # 5. API 테스트
@@ -97,8 +101,9 @@ echo -n "테스트: Chat API ... "
 CHAT_RESPONSE=$(curl -sf -X POST http://localhost:8000/api/chat \
     -H "Content-Type: application/json" \
     -d '{"message": "테스트 메시지입니다"}' 2>&1)
+CHAT_EXIT=$?
 
-if echo "$CHAT_RESPONSE" | grep -q "session_id"; then
+if [ $CHAT_EXIT -eq 0 ] && echo "$CHAT_RESPONSE" | grep -q "session_id"; then
     echo -e "${GREEN}PASSED${NC}"
     ((PASSED++))
 else
@@ -118,11 +123,11 @@ echo ""
 echo "6. 컨테이너 로그"
 echo "----------------------------------------"
 echo "=== Backend 로그 (최근 30줄) ==="
-docker compose logs --tail=30 backend
+docker compose logs --tail=30 backend 2>&1 || true
 
 echo ""
 echo "=== Frontend 로그 (최근 10줄) ==="
-docker compose logs --tail=10 frontend
+docker compose logs --tail=10 frontend 2>&1 || true
 
 # 7. 결과 출력
 echo ""
