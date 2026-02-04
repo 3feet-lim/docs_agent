@@ -42,8 +42,9 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
     environment:
-      # Backend URL 설정 (컨테이너 간 통신)
-      - VITE_BACKEND_URL=http://backend:8000
+      # Backend URL 설정 (브라우저에서 접근하므로 localhost 사용)
+      # Vite proxy를 통해 backend 컨테이너로 전달됨
+      - VITE_BACKEND_URL=
     depends_on:
       - backend
     networks:

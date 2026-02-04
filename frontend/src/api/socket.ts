@@ -8,8 +8,8 @@ import type { MessageChunk, MessageComplete } from '../types/message'
  * TODO: 실제 연결 로직 구현 (Phase 5)
  */
 
-// 백엔드 URL (환경변수 또는 기본값)
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+// 백엔드 URL (환경변수 또는 기본값 - 빈 문자열이면 같은 호스트 사용)
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || ''
 
 // Socket.IO 클라이언트 인스턴스
 let socket: Socket | null = null
@@ -22,12 +22,16 @@ export function initSocket(): Socket {
     return socket
   }
 
-  socket = io(BACKEND_URL, {
+  // BACKEND_URL이 비어있으면 현재 호스트 사용 (Vite proxy 활용)
+  const socketUrl = BACKEND_URL || window.location.origin
+
+  socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
     autoConnect: true,
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
+    path: '/socket.io',
   })
 
   return socket
