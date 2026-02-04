@@ -9,13 +9,18 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import socketio
 
 from .config import get_settings
 from .utils.logger import setup_logging, get_logger
+from .utils.exceptions import (
+    RAGChatbotException,
+    get_user_friendly_message,
+)
 from .api.websocket import sio, get_socket_app
 from .api.chat import router as chat_router
 
@@ -140,6 +145,46 @@ async def root() -> dict:
 
 # 라우터 등록
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
+
+
+# 전역 예외 핸들러
+@app.exception_handler(RAGChatbotException)
+async def rag_exception_handler(request: Request, exc: RAGChatbotException):
+    """
+    RAG 챗봇 커스텀 예외 핸들러
+    
+    커스텀 예외를 JSON 응답으로 변환합니다.
+    """
+    logger.error(f"RAG 예외 발생: {exc.code} - {exc.message}")
+    return JSONResponse(
+        status_code=400 if exc.code == "VALIDATION_ERROR" else 500,
+        content=exc.to_dict()
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    전역 예외 핸들러
+    
+    처리되지 않은 예외를 사용자 친화적 메시지로 변환합니다.
+    """
+    logger.error(f"처리되지 않은 예외: {type(exc).__name__} - {str(exc)}")
+    
+    user_message = get_user_friendly_message(exc)
+    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": user_message,
+                "timestamp": timestamp
+            }
+        }
+    )
+
 
 # Socket.IO ASGI 앱 생성 (FastAPI와 Socket.IO 통합)
 # Socket.IO는 /socket.io 경로에서 처리됨

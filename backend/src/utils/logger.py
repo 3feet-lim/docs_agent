@@ -3,15 +3,54 @@
 
 JSON 형식의 구조화된 로깅을 제공합니다.
 환경변수를 통해 로그 레벨과 형식을 설정할 수 있습니다.
+민감 정보 마스킹 기능을 포함합니다.
 """
 
 import logging
 import json
+import re
 import sys
 from datetime import datetime, timezone
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 
 from ..config import get_settings
+
+
+# 마스킹할 민감 정보 패턴
+SENSITIVE_PATTERNS: List[tuple] = [
+    # AWS 키
+    (r'(AWS_ACCESS_KEY_ID["\s:=]+)[A-Z0-9]{20}', r'\1***MASKED***'),
+    (r'(AWS_SECRET_ACCESS_KEY["\s:=]+)[A-Za-z0-9/+=]{40}', r'\1***MASKED***'),
+    (r'(AKIA)[A-Z0-9]{16}', r'***AWS_KEY_MASKED***'),
+    # 비밀번호
+    (r'(password["\s:=]+)[^\s,}"\']+', r'\1***MASKED***'),
+    (r'(secret["\s:=]+)[^\s,}"\']+', r'\1***MASKED***'),
+    # API 키
+    (r'(api[_-]?key["\s:=]+)[^\s,}"\']+', r'\1***MASKED***'),
+    (r'(token["\s:=]+)[^\s,}"\']+', r'\1***MASKED***'),
+    # 이메일 (부분 마스킹)
+    (r'([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', r'***@\2'),
+]
+
+
+def mask_sensitive_data(text: str) -> str:
+    """
+    민감 정보를 마스킹합니다.
+    
+    Args:
+        text: 원본 텍스트
+        
+    Returns:
+        str: 마스킹된 텍스트
+    """
+    if not isinstance(text, str):
+        return text
+    
+    result = text
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+    
+    return result
 
 
 class JSONFormatter(logging.Formatter):
@@ -19,6 +58,7 @@ class JSONFormatter(logging.Formatter):
     JSON 형식의 로그 포매터
     
     로그 메시지를 JSON 형식으로 변환하여 구조화된 로깅을 제공합니다.
+    민감 정보는 자동으로 마스킹됩니다.
     """
     
     def format(self, record: logging.LogRecord) -> str:
@@ -31,23 +71,34 @@ class JSONFormatter(logging.Formatter):
         Returns:
             str: JSON 형식의 로그 문자열
         """
+        # 메시지 민감 정보 마스킹
+        message = mask_sensitive_data(record.getMessage())
+        
         log_data: Dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": message,
             "module": record.module,
             "function": record.funcName,
             "line": record.lineno,
         }
         
-        # 추가 필드가 있는 경우 포함
+        # 추가 필드가 있는 경우 포함 (민감 정보 마스킹)
         if hasattr(record, "extra_fields"):
-            log_data.update(record.extra_fields)
+            masked_extra = {}
+            for key, value in record.extra_fields.items():
+                if isinstance(value, str):
+                    masked_extra[key] = mask_sensitive_data(value)
+                else:
+                    masked_extra[key] = value
+            log_data.update(masked_extra)
         
         # 예외 정보가 있는 경우 포함
         if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
+            log_data["exception"] = mask_sensitive_data(
+                self.formatException(record.exc_info)
+            )
         
         return json.dumps(log_data, ensure_ascii=False, default=str)
 
