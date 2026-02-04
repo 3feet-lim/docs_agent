@@ -225,6 +225,12 @@ async def chat_message(sid: str, data: dict):
                                 'score': round(chunk_info.score, 3)
                             })
                 
+                # Knowledge Base가 답변을 거부한 경우 일반 Bedrock으로 fallback
+                if full_response.strip().lower().startswith("sorry, i am unable"):
+                    logger.info("Knowledge Base 답변 거부, Bedrock 직접 호출로 fallback")
+                    await _send_bedrock_response(sid, request, ai_message_id, timestamp, history)
+                    return
+                
                 # AI 응답 DB에 저장
                 save_message(
                     message_id=ai_message_id,
@@ -236,12 +242,12 @@ async def chat_message(sid: str, data: dict):
                 )
                 
             except Exception as e:
-                logger.error(f"Knowledge Base 처리 오류, 에코 모드로 폴백: {e}")
-                await _send_echo_response(sid, request, ai_message_id, timestamp)
+                logger.error(f"Knowledge Base 처리 오류, Bedrock 직접 호출로 폴백: {e}")
+                await _send_bedrock_response(sid, request, ai_message_id, timestamp, history)
                 return
         else:
-            # Knowledge Base가 없으면 에코 모드
-            await _send_echo_response(sid, request, ai_message_id, timestamp)
+            # Knowledge Base가 없으면 Bedrock 직접 호출
+            await _send_bedrock_response(sid, request, ai_message_id, timestamp, history)
             return
         
         # 응답 완료 이벤트
@@ -264,6 +270,65 @@ async def chat_message(sid: str, data: dict):
             message=str(e)
         )
         await sio.emit('chat_error', error.model_dump(), to=sid)
+
+
+async def _send_bedrock_response(
+    sid: str, 
+    request: ChatMessageRequest, 
+    message_id: str, 
+    timestamp: str,
+    history: list
+):
+    """Bedrock 모델을 직접 호출하여 응답을 전송합니다."""
+    from ..bedrock_client import get_bedrock_client, BedrockError
+    
+    try:
+        bedrock_client = get_bedrock_client()
+        full_response = ""
+        
+        # 시스템 프롬프트
+        system_prompt = """당신은 친절하고 도움이 되는 AI 어시스턴트입니다. 
+사용자의 질문에 정확하고 유용한 답변을 제공해주세요.
+한국어로 질문하면 한국어로 답변하고, 영어로 질문하면 영어로 답변해주세요."""
+        
+        # 스트리밍 응답 생성
+        async for token in bedrock_client.invoke_stream(
+            prompt=request.message,
+            system_prompt=system_prompt,
+            conversation_history=history
+        ):
+            if token:
+                full_response += token
+                chunk = ChatResponseChunk(
+                    session_id=request.session_id,
+                    content=token,
+                    is_final=False
+                )
+                await sio.emit('chat_response_chunk', chunk.model_dump(), to=sid)
+        
+        # DB에 저장
+        save_message(
+            message_id=message_id,
+            session_id=request.session_id,
+            role="assistant",
+            content=full_response,
+            timestamp=timestamp
+        )
+        
+        # 응답 완료
+        complete = ChatResponseComplete(
+            session_id=request.session_id,
+            message_id=message_id,
+            sources=[]
+        )
+        await sio.emit('chat_response_complete', complete.model_dump(), to=sid)
+        
+        logger.info(f"Bedrock 직접 응답 완료: sid={sid}, message_id={message_id}")
+        
+    except BedrockError as e:
+        logger.error(f"Bedrock 호출 실패: {e}")
+        # Bedrock도 실패하면 에코 모드로 fallback
+        await _send_echo_response(sid, request, message_id, timestamp)
 
 
 async def _send_echo_response(sid: str, request: ChatMessageRequest, message_id: str, timestamp: str):
