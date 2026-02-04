@@ -29,7 +29,7 @@ chmod +x scripts/test-docker.sh
 ### 컨테이너 시작
 ```bash
 cp .env.example .env
-docker-compose up -d
+docker compose up -d
 ```
 
 ### API 테스트
@@ -48,13 +48,13 @@ curl http://localhost:8000/api/sessions
 
 ### 로그 확인
 ```bash
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ### 컨테이너 종료
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## 예상 에러

@@ -37,7 +37,7 @@ run_test() {
 cleanup() {
     echo ""
     echo "정리 중..."
-    docker-compose down --remove-orphans 2>/dev/null || true
+    docker compose down --remove-orphans 2>/dev/null || true
 }
 
 trap cleanup EXIT
@@ -47,7 +47,7 @@ echo ""
 echo "1. 환경 확인"
 echo "----------------------------------------"
 docker --version
-docker-compose --version
+docker compose version
 
 # 2. .env 파일 확인
 echo ""
@@ -65,21 +65,21 @@ mkdir -p data
 echo ""
 echo "3. Docker 이미지 빌드"
 echo "----------------------------------------"
-run_test "Backend 이미지 빌드" "docker-compose build backend"
-run_test "Frontend 이미지 빌드" "docker-compose build frontend"
+run_test "Backend 이미지 빌드" "docker compose build backend"
+run_test "Frontend 이미지 빌드" "docker compose build frontend"
 
 # 4. 컨테이너 시작
 echo ""
 echo "4. 컨테이너 시작"
 echo "----------------------------------------"
-docker-compose up -d
+docker compose up -d
 
 echo "서버 시작 대기 중 (15초)..."
 sleep 15
 
 # 컨테이너 상태 확인
 echo ""
-docker-compose ps
+docker compose ps
 
 # 5. API 테스트
 echo ""
@@ -118,11 +118,11 @@ echo ""
 echo "6. 컨테이너 로그"
 echo "----------------------------------------"
 echo "=== Backend 로그 (최근 30줄) ==="
-docker-compose logs --tail=30 backend
+docker compose logs --tail=30 backend
 
 echo ""
 echo "=== Frontend 로그 (최근 10줄) ==="
-docker-compose logs --tail=10 frontend
+docker compose logs --tail=10 frontend
 
 # 7. 결과 출력
 echo ""
